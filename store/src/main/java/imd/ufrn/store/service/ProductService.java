@@ -21,7 +21,8 @@ public class ProductService {
     private static final double FREQUENCY = 0.6;
     private static final double BASE = 5.0;
 
-    private static Random random = new Random();
+    // 2 -> 2 ok before failure
+    private static Random random = new Random(2);
     private static int timeMinOmission = 10;
 
     private Instant lastError = Instant.MIN;

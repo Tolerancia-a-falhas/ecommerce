@@ -13,8 +13,8 @@ public class ExchangeService {
     private static final double FREQUENCY = 0.3;
     private static final double BASE = 5.0;
     private int timer = 1;
-
-    private static Random random = new Random();
+    // 9 -> 31 before failure; 8 -> 2 before failure
+    private static Random random = new Random(8);
 
     @Autowired
     private ApplicationTerminator terminator;
