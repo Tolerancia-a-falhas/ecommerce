@@ -25,9 +25,9 @@ public class EcommerceService {
     private WebClient webClient;
 
     // Base URLs for the other applications
-    private static final String EXCHANGEBASEURL = "http://exchange-service/api";
-    private static final String FIDELITYBASEURL = "http://fidelity-service/api";
-    private static final String STOREBASEURL = "http://store-service/api";
+    private static final String EXCHANGEBASEURL = "http://exchange:8081";
+    private static final String FIDELITYBASEURL = "http://fidelity:8082";
+    private static final String STOREBASEURL = "http://store:8083";
 
     public BuyResponse createBuy(BuyRequest buyRequest) {
         Long productId = buyRequest.getProduct();
@@ -95,8 +95,8 @@ public class EcommerceService {
         // TODO: post body ausence is ok?
         return webClient.post()
                 .uri(sellProductUri)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(null)
+                // .contentType(MediaType.APPLICATION_JSON)
+                // .bodyValue(null)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .toEntity(SellResponse.class)
