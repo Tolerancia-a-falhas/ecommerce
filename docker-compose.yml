@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  ecommerce:
+    build:
+      context: ./ecommerce
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+
+  exchange:
+    build:
+      context: ./exchange
+    ports:
+      - "8081:8081"
+    networks:
+      - default
+
+  fidelity:
+    build:
+      context: ./fidelity
+    ports:
+      - "8082:8082"
+    networks:
+      - default
+
+  store:
+    build:
+      context: ./store
+    ports:
+      - "8083:8083"
+    networks:
+      - default
