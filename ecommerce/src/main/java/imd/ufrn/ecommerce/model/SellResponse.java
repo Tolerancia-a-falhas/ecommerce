@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class BuyResponse {
+public class SellResponse {
+    // um id único da transação (gerado automaticamente) que representa essa venda.
     private Long transactionId;
 }

@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class BuyResponse {
-    private Long transactionId;
+public class ExchangeResponse {
+    private double rate;
 }
