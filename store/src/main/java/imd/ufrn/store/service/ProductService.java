@@ -8,7 +8,7 @@ import java.util.Random;
 
 import org.springframework.stereotype.Service;
 
-import imd.ufrn.store.model.Product;
+import imd.ufrn.store.model.ProductResponse;
 import imd.ufrn.store.model.SellResponse;
 import imd.ufrn.store.model.Transaction;
 
@@ -28,7 +28,7 @@ public class ProductService {
     private Instant lastError = Instant.MIN;
     private Duration errDurationInMin = Duration.ofSeconds(5);
 
-    public Product getProduct(Long id) {
+    public ProductResponse getProduct(Long id) {
         simulateProductOmission();
 
         return generateDeterministicProductById(id);
@@ -45,11 +45,11 @@ public class ProductService {
         return new SellResponse(transactionId);
     }
 
-    private Product generateDeterministicProductById(Long id) {
+    private ProductResponse generateDeterministicProductById(Long id) {
         double value = BASE + AMPLITUDE * Math.sin(FREQUENCY * id);
         String name = "productName " + id.toString();
 
-        return new Product(id, name, value);
+        return new ProductResponse(id, name, value);
     }
 
     private void simulateProductOmission() {

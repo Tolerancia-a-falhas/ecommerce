@@ -6,17 +6,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import imd.ufrn.store.model.Product;
+import imd.ufrn.store.model.ProductResponse;
 import imd.ufrn.store.model.SellResponse;
 import imd.ufrn.store.service.ProductService;
 
 @RestController
-public class ProductController {
+public class StoreController {
     @Autowired
     private ProductService productService;
 
     @GetMapping("/product/{id}")
-    public Product getProduct(@PathVariable Long id) {
+    public ProductResponse getProduct(@PathVariable Long id) {
         return productService.getProduct(id);
     }
 
