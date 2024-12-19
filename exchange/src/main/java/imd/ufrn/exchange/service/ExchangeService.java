@@ -35,6 +35,7 @@ public class ExchangeService {
         int chance = random.nextInt(10);
 
         if (chance == 0) {
+            System.out.println("ERROR: exchange stop");
             terminator.stopApplication();
         }
     }

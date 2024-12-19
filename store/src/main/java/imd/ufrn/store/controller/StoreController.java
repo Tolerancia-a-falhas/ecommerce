@@ -17,11 +17,13 @@ public class StoreController {
 
     @GetMapping("/product/{id}")
     public ProductResponse getProduct(@PathVariable Long id) {
+        System.out.println("Controller: get product");
         return productService.getProduct(id);
     }
 
     @PostMapping("/sell/{id}")
     public SellResponse sellProduct(@PathVariable Long id) {
+        System.out.println("Controller: sell product");
         return productService.sellProduct(id);
 
     }

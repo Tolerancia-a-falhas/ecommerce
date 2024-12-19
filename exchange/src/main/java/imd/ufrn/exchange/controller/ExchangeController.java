@@ -16,6 +16,7 @@ public class ExchangeController {
     @GetMapping("/exchange")
 
     public ExchangeResponse getExchangeRate() {
+        System.out.println("controller exchange");
         return exchangeService.getExchangeRate();
     }
 

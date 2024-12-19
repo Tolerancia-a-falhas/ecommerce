@@ -24,6 +24,7 @@ public class FidelityService {
     private void simulateError() {
         int chance = random.nextInt(10);
         if (chance == 0) {
+            System.out.println("Error: fidelity sleep");
             sleepMilis(timeErrorMilis);
         }
     }

@@ -1,14 +1,13 @@
 package imd.ufrn.ecommerce.service;
 
 import java.net.URI;
-
-import javax.print.attribute.standard.Media;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import imd.ufrn.ecommerce.model.BonusRequest;
@@ -29,6 +28,10 @@ public class EcommerceService {
     private static final String FIDELITYBASEURL = "http://fidelity:8082";
     private static final String STOREBASEURL = "http://store:8083";
 
+    private Double lastExchange = null;
+
+    private List<BonusRequest> fidelityWaitQueue = new ArrayList();
+
     public BuyResponse createBuy(BuyRequest buyRequest) {
         Long productId = buyRequest.getProduct();
         Long userId = buyRequest.getUser();
@@ -38,7 +41,7 @@ public class EcommerceService {
         ProductResponse productResponse = this.fetchProductDetails(productId).getBody();
 
         // Request 2: Call Exchange to get the conversion rate
-        double exchangeRate = this.fetchExchangeRate().getBody().getRate();
+        double exchangeRate = this.getExchangeRate(faultTolerance);
 
         double convertedPrice = productResponse.getValue() * exchangeRate;
 
@@ -47,9 +50,50 @@ public class EcommerceService {
 
         // Request 4: Call Fidelity to add bonus points
         Long bonusPoints = Math.round(productResponse.getValue());
-        this.sendBonus(userId, bonusPoints);
+        this.sendBonus(userId, bonusPoints, faultTolerance);
 
         return new BuyResponse(transactionId);
+    }
+
+    private double getExchangeRate(boolean tolerateFailures) {
+        try {
+            double rate = fetchExchangeRate().getBody().getRate();
+            lastExchange = rate;
+            return rate;
+        } catch (Exception e) {
+            System.out.println("Failed to get Exchange Rate. Should try to tolerate failures: " + tolerateFailures);
+            if (tolerateFailures && lastExchange != null) {
+                System.out.println("Tolerated Exchange failure using cached value: " + lastExchange);
+                return lastExchange;
+            } else {
+                throw new Error("Exchange failed to provide a value, and there is no value cached");
+            }
+        }
+    }
+
+    private void sendBonus(Long userId, Long bonus, boolean tolerateFailures) {
+        BonusRequest bonusRequest = new BonusRequest(userId, bonus);
+        boolean requestWorked = true;
+        try {
+            sendBonusRequest(bonusRequest);
+            requestWorked = true;
+        } catch (Exception e) {
+            requestWorked = false;
+            System.out.println("Failed to register Bonus. Should try to tolerate failures: " + tolerateFailures);
+            if (tolerateFailures) {
+                fidelityWaitQueue.add(bonusRequest);
+                System.out.println("added to wait queue bonus of user: " + userId + " with value of: " + bonus);
+            }
+        }
+        if (requestWorked && tolerateFailures && !fidelityWaitQueue.isEmpty()) {
+            System.out.println("fidelity request worked. Trying to resend old bonuses");
+            for (int i = 0; i < fidelityWaitQueue.size(); ++i) {
+                BonusRequest bonusRequestQueue = fidelityWaitQueue.get(i);
+                sendBonusRequest(bonusRequestQueue);
+                fidelityWaitQueue.remove(i);
+                i--;
+            }
+        }
     }
 
     private ResponseEntity<ExchangeResponse> fetchExchangeRate() {
@@ -60,11 +104,9 @@ public class EcommerceService {
                 .retrieve()
                 .toEntity(ExchangeResponse.class)
                 .block();
-        // return restTemplate.getForEntity(exchangeUri, ExchangeResponse.class);
     }
 
-    private ResponseEntity<Void> sendBonus(Long userId, Long bonus) {
-        BonusRequest bonusRequest = new BonusRequest(userId, bonus);
+    private ResponseEntity<Void> sendBonusRequest(BonusRequest bonusRequest) {
         URI bonusUri = URI.create(FIDELITYBASEURL + "/bonus");
 
         return webClient.post()
@@ -75,7 +117,6 @@ public class EcommerceService {
                 .retrieve()
                 .toEntity(Void.class)
                 .block();
-        // return restTemplate.postForEntity(bonusUri, bonusRequest, Void.class);
     }
 
     private ResponseEntity<ProductResponse> fetchProductDetails(Long productId) {
@@ -86,7 +127,6 @@ public class EcommerceService {
                 .retrieve()
                 .toEntity(ProductResponse.class)
                 .block();
-        // return restTemplate.getForEntity(getProductUri, ProductResponse.class);
     }
 
     private ResponseEntity<SellResponse> callSellProduct(Long productId) {
@@ -95,13 +135,12 @@ public class EcommerceService {
         // TODO: post body ausence is ok?
         return webClient.post()
                 .uri(sellProductUri)
-                // .contentType(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
                 // .bodyValue(null)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .toEntity(SellResponse.class)
                 .block();
-        // return restTemplate.postForEntity(sellProductUri, null, SellResponse.class);
     }
 
 }

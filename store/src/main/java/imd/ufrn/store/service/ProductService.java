@@ -29,14 +29,15 @@ public class ProductService {
     private Duration errDurationInMin = Duration.ofSeconds(5);
 
     public ProductResponse getProduct(Long id) {
-        simulateProductOmission();
+        // simulateProductOmission();
 
         return generateDeterministicProductById(id);
     }
 
     public SellResponse sellProduct(Long id) {
         if (simulateSellError()) {
-            throw new Error();
+            System.out.println("ERROR: sell product time error");
+            // throw new Error();
         }
 
         Long transactionId = nextTransactionId;
@@ -55,6 +56,7 @@ public class ProductService {
     private void simulateProductOmission() {
         int chance = random.nextInt(10);
         if (chance <= 1) {
+            System.out.println("ERROR: store get product omission");
             sleepMinutes(timeMinOmission);
         }
     }

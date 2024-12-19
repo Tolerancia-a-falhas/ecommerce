@@ -15,6 +15,7 @@ public class FidelityController {
 
     @PostMapping("/bonus")
     public void createBonus(@RequestBody BonusRequest bonusRequest) {
+        System.out.println("controller fidelity bonus");
         fidelityService.createBonus(bonusRequest);
     }
 
