@@ -110,7 +110,7 @@ public class EcommerceService {
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .toEntity(ExchangeResponse.class)
-                    .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
+                    .retry(1)
                     .block();
         } else {
             return webClient.get()
