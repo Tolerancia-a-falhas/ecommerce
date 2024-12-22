@@ -57,7 +57,7 @@ services:
     ports:
       - "8083:8083"
     deploy:
-      replicas: 1
+      replicas: 4
       restart_policy:
         condition: any
         window: 10s
