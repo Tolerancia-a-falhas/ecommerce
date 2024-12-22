@@ -22,7 +22,8 @@ public class ProductService {
     private static final double BASE = 5.0;
 
     // 2 -> 2 ok before failure
-    private static Random random = new Random(2);
+    private static Random randomError = new Random(2);
+    private static Random randomTransctionId = new Random();
     private static int timeMinOmission = 5;
 
     private Instant lastError = Instant.MIN;
@@ -37,7 +38,8 @@ public class ProductService {
     public SellResponse sellProduct(Long id) {
         simulateSellError();
 
-        Long transactionId = nextTransactionId;
+        Long transactionId = Long.parseLong(
+                String.valueOf(nextTransactionId) + "000" + randomTransctionId.nextLong(99999, 99999999));
         nextTransactionId++;
         soldProductsLog.add(new Transaction(transactionId, id));
         return new SellResponse(transactionId);
@@ -54,7 +56,7 @@ public class ProductService {
         if (isInErrorState()) {
             executeError();
         } else {
-            int chance = random.nextInt(10);
+            int chance = randomError.nextInt(10);
             if (chance <= 1) {
                 System.out.println("ERROR: store get product omission");
                 sleepMinutes(timeMinOmission);
@@ -66,7 +68,7 @@ public class ProductService {
         if (isInErrorState()) {
             executeError();
         } else {
-            int chance = random.nextInt(10);
+            int chance = randomError.nextInt(10);
             if (chance == 0) {
                 setStartErrorState();
                 executeError();
