@@ -40,7 +40,7 @@ public class EcommerceService {
         boolean faultTolerance = buyRequest.getFt();
 
         // Request 1: Call Store to get product details
-        ProductResponse productResponse = this.fetchProductDetails(productId).getBody();
+        ProductResponse productResponse = this.fetchProductDetails(productId, faultTolerance).getBody();
 
         // Request 2: Call Exchange to get the conversion rate
         double exchangeRate = this.getExchangeRate(faultTolerance);
@@ -48,7 +48,7 @@ public class EcommerceService {
         double convertedPrice = productResponse.getValue() * exchangeRate;
 
         // Request 3: Call Store to complete the sale
-        Long transactionId = this.callSellProduct(productId).getBody().getTransactionId();
+        Long transactionId = this.callSellProduct(productId, faultTolerance).getBody().getTransactionId();
 
         // Request 4: Call Fidelity to add bonus points
         Long bonusPoints = Math.round(productResponse.getValue());
@@ -57,14 +57,14 @@ public class EcommerceService {
         return new BuyResponse(transactionId);
     }
 
-    private double getExchangeRate(boolean tolerateFailures) {
+    private double getExchangeRate(boolean faultTolerance) {
         try {
-            double rate = fetchExchangeRate().getBody().getRate();
+            double rate = fetchExchangeRate(faultTolerance).getBody().getRate();
             lastExchange = rate;
             return rate;
         } catch (Exception e) {
-            System.out.println("Failed to get Exchange Rate. Should try to tolerate failures: " + tolerateFailures);
-            if (tolerateFailures && lastExchange != null) {
+            System.out.println("Failed to get Exchange Rate. Should try to tolerate failures: " + faultTolerance);
+            if (faultTolerance && lastExchange != null) {
                 System.out.println("Tolerated Exchange failure using cached value: " + lastExchange);
                 return lastExchange;
             } else {
@@ -73,7 +73,7 @@ public class EcommerceService {
         }
     }
 
-    private void sendBonus(Long userId, Long bonus, boolean tolerateFailures) {
+    private void sendBonus(Long userId, Long bonus, boolean faultTolerance) {
         BonusRequest bonusRequest = new BonusRequest(userId, bonus);
         boolean requestWorked = true;
         try {
@@ -81,32 +81,45 @@ public class EcommerceService {
             requestWorked = true;
         } catch (Exception e) {
             requestWorked = false;
-            System.out.println("Failed to register Bonus. Should try to tolerate failures: " + tolerateFailures);
-            if (tolerateFailures) {
+            System.out.println("Failed to register Bonus. Should try to tolerate failures: " + faultTolerance);
+            if (faultTolerance) {
                 fidelityWaitQueue.add(bonusRequest);
                 System.out.println("added to wait queue bonus of user: " + userId + " with value of: " + bonus);
             }
         }
-        if (requestWorked && tolerateFailures && !fidelityWaitQueue.isEmpty()) {
-            System.out.println("fidelity request worked. Trying to resend old bonuses");
-            for (int i = 0; i < fidelityWaitQueue.size(); ++i) {
-                BonusRequest bonusRequestQueue = fidelityWaitQueue.get(i);
-                sendBonusRequest(bonusRequestQueue);
-                fidelityWaitQueue.remove(i);
-                i--;
+        if (requestWorked && faultTolerance && !fidelityWaitQueue.isEmpty()) {
+            try {
+                System.out.println("fidelity request worked. Trying to resend old bonuses");
+                for (int i = 0; i < fidelityWaitQueue.size(); ++i) {
+                    BonusRequest bonusRequestQueue = fidelityWaitQueue.get(i);
+                    sendBonusRequest(bonusRequestQueue);
+                    fidelityWaitQueue.remove(i);
+                    i--;
+                }
+            } catch (Exception e) {
+                System.out.println("fidelity failed while trying to send old bonuses. Normal operation continuing");
             }
         }
     }
 
-    private ResponseEntity<ExchangeResponse> fetchExchangeRate() {
+    private ResponseEntity<ExchangeResponse> fetchExchangeRate(boolean faultTolerance) {
         URI exchangeUri = URI.create(EXCHANGEBASEURL + "/exchange");
-        return webClient.get()
-                .uri(exchangeUri)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .toEntity(ExchangeResponse.class)
-                .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
-                .block();
+        if (faultTolerance) {
+            return webClient.get()
+                    .uri(exchangeUri)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(ExchangeResponse.class)
+                    .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
+                    .block();
+        } else {
+            return webClient.get()
+                    .uri(exchangeUri)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(ExchangeResponse.class)
+                    .block();
+        }
     }
 
     private ResponseEntity<Void> sendBonusRequest(BonusRequest bonusRequest) {
@@ -122,28 +135,48 @@ public class EcommerceService {
                 .block();
     }
 
-    private ResponseEntity<ProductResponse> fetchProductDetails(Long productId) {
+    private ResponseEntity<ProductResponse> fetchProductDetails(Long productId, boolean faultTolerance) {
         URI getProductUri = URI.create(STOREBASEURL + "/product/" + productId);
-        return webClient.get()
-                .uri(getProductUri)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .toEntity(ProductResponse.class)
-                .block();
+
+        if (faultTolerance) {
+            return webClient.get()
+                    .uri(getProductUri)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(ProductResponse.class)
+                    .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
+                    .block();
+        } else {
+            return webClient.get()
+                    .uri(getProductUri)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(ProductResponse.class)
+                    .block();
+        }
     }
 
-    private ResponseEntity<SellResponse> callSellProduct(Long productId) {
+    private ResponseEntity<SellResponse> callSellProduct(Long productId, boolean faultTolerance) {
         URI sellProductUri = URI.create(STOREBASEURL + "/sell/" + productId);
 
-        // TODO: post body ausence is ok?
-        return webClient.post()
-                .uri(sellProductUri)
-                .contentType(MediaType.APPLICATION_JSON)
-                // .bodyValue(null)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .toEntity(SellResponse.class)
-                .block();
+        if (faultTolerance) {
+            return webClient.post()
+                    .uri(sellProductUri)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(SellResponse.class)
+                    .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
+                    .block();
+        } else {
+            return webClient.post()
+                    .uri(sellProductUri)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .toEntity(SellResponse.class)
+                    .block();
+        }
     }
 
 }
