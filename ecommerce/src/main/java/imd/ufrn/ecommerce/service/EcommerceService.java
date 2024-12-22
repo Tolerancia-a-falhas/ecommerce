@@ -1,6 +1,7 @@
 package imd.ufrn.ecommerce.service;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +17,7 @@ import imd.ufrn.ecommerce.model.BuyResponse;
 import imd.ufrn.ecommerce.model.ExchangeResponse;
 import imd.ufrn.ecommerce.model.ProductResponse;
 import imd.ufrn.ecommerce.model.SellResponse;
+import reactor.util.retry.Retry;
 
 @Service
 public class EcommerceService {
@@ -103,6 +105,7 @@ public class EcommerceService {
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .toEntity(ExchangeResponse.class)
+                .retryWhen(Retry.backoff(4, Duration.ofSeconds(2)))
                 .block();
     }
 
