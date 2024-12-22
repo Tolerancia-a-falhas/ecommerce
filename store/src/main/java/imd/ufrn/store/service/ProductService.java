@@ -23,22 +23,19 @@ public class ProductService {
 
     // 2 -> 2 ok before failure
     private static Random random = new Random(2);
-    private static int timeMinOmission = 10;
+    private static int timeMinOmission = 5;
 
     private Instant lastError = Instant.MIN;
-    private Duration errDurationInMin = Duration.ofSeconds(5);
+    private Duration errDuration = Duration.ofSeconds(5);
 
     public ProductResponse getProduct(Long id) {
-        // simulateProductOmission();
+        simulateProductOmission();
 
         return generateDeterministicProductById(id);
     }
 
     public SellResponse sellProduct(Long id) {
-        if (simulateSellError()) {
-            System.out.println("ERROR: sell product time error");
-            // throw new Error();
-        }
+        simulateSellError();
 
         Long transactionId = nextTransactionId;
         nextTransactionId++;
@@ -54,32 +51,39 @@ public class ProductService {
     }
 
     private void simulateProductOmission() {
-        int chance = random.nextInt(10);
-        if (chance <= 1) {
-            System.out.println("ERROR: store get product omission");
-            sleepMinutes(timeMinOmission);
+        if (isInErrorState()) {
+            executeError();
+        } else {
+            int chance = random.nextInt(10);
+            if (chance <= 1) {
+                System.out.println("ERROR: store get product omission");
+                sleepMinutes(timeMinOmission);
+            }
         }
     }
 
-    private Boolean simulateSellError() {
+    private void simulateSellError() {
         if (isInErrorState()) {
-            return true;
+            executeError();
+        } else {
+            int chance = random.nextInt(10);
+            if (chance == 0) {
+                setStartErrorState();
+                executeError();
+            }
         }
+    }
 
-        int chance = random.nextInt(10);
-        if (chance == 0) {
-            setStartErrorState();
-            return true;
-        }
-
-        return false;
+    private void executeError() {
+        System.out.println("ERROR: sell product time error");
+        throw new Error();
     }
 
     private Boolean isInErrorState() {
         Instant now = Instant.now();
         Duration timeSinceLastError = Duration.between(lastError, now);
 
-        if (timeSinceLastError.compareTo(errDurationInMin) <= 0) {
+        if (timeSinceLastError.compareTo(errDuration) <= 0) {
             return true;
         } else {
             return false;
